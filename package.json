@@ -1,0 +1,16 @@
+{
+    "scripts": {
+        "start": "ts-node src/Aqua.ts",
+        "build": "tsc"
+    },
+    "devDependencies": {
+        "@types/node": "^22.1.0",
+        "ts-node": "^10.9.2",
+        "tslib": "^2.6.3",
+        "typescript": "^5.5.4"
+    },
+    "license": "MIT",
+    "dependencies": {
+        "mysql2": "^3.11.0"
+    }
+}
