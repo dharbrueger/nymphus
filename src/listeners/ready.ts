@@ -1,31 +1,11 @@
-import { Client, PresenceStatus } from "discord.js";
+import { Client } from "discord.js";
 import { Commands } from "../commands/Commands";
-import waterFacts from "../data/waterFacts";
-import connection from "../services/DataManager";
-import { QueryError } from "mysql2";
-
-let nextSendTime = new Date(Date.now() + 3600000);
+import ReminderService from "../services/ReminderService";
+import MessagesService from "../services/MessagesService";
+import NotificationChannelService from "../services/NotificationChannelService";
 
 const currentHour = new Date().getHours();
 const shouldRemind = currentHour >= 8 && currentHour < 20;
-
-interface Reminder {
-    userId: string;
-}
-
-const getSubscribers = (): Promise<Reminder[]> => {
-    return new Promise((resolve, reject) => {
-        connection.query("SELECT * FROM reminders", (error: QueryError, results: Reminder[]) => {
-            if (error) {
-                console.error(error);
-                reject(error);
-                return;
-            }
-
-            resolve(results);
-        });
-    });
-};
 
 export default (client: Client): void => {
     client.on("ready", async () => {
@@ -33,44 +13,59 @@ export default (client: Client): void => {
             return;
         }
 
-        const generalTextChannel = "generalTextChannelId";
-        const getRandomWaterFact = () => {
-            return waterFacts[Math.floor(Math.random() * waterFacts.length)];
-        };
+        // need to move all of this to a service
+        const channelsToRemind = await NotificationChannelService.getNotificationChannels();
+        const guildChannelsMap = new Map<string, any[]>();
+
+        channelsToRemind.forEach((channel) => {
+            if (!guildChannelsMap.has(channel.guildId)) {
+                guildChannelsMap.set(channel.guildId, []);
+            }
+            guildChannelsMap.get(channel.guildId)?.push(channel.channelId);
+        });
 
         await client.application.commands.set(Commands);
 
         console.log(`${client.user.username} is online`);
 
-        setInterval(async () => {
-            const channel = await client.channels.fetch(generalTextChannel);
-
+        const sendReminderToChannel = async (channelId: string, guildId: string) => {
+            const channel = await client.channels.fetch(channelId);
+            console.log(`Sending reminder to channel: ${channelId} in guild: ${guildId}`);
+            console.log(`Should remind: ${shouldRemind}`);
             if (shouldRemind && channel && channel.isTextBased()) {
+                const messagesService = new MessagesService();
                 const messages = await channel.messages.fetch({ limit: 1 });
                 const lastMessage = messages.first();
 
                 if (lastMessage && lastMessage.author.id !== client.user?.id) {
-                    let message = `💧 Don't forget to drink water! 💧\n\nSubscribe to reminders by typing /remindme\n\nHere's a water fact: ${getRandomWaterFact()}`;
-                    const guild = client.guilds.cache.get("guildId");
-                    const subscriberList = await getSubscribers();
-                    console.log(subscriberList);
-
-                    const memberMessages = await Promise.all(subscriberList.map(async (subscriber) => {
-                        const user = await guild?.members.fetch(subscriber.userId);
-                        if (user) {
-                            return `@${user.user.username}`;
-                        }
-                        return "";
-                    }));
-
-                    const filteredMemberMessages = memberMessages.filter(Boolean).join(", ");
-                    const memberMessage = `\n\nCurrent subscribers: ${filteredMemberMessages}`;
-
-                    message += memberMessage;
-                    channel.send(message);
-                    nextSendTime = new Date(Date.now() + 3600000); // 1 hour
+                    const guild = client.guilds.cache.get(guildId);
+                    if (guild) {
+                        await messagesService.sendSubscriberWaterReminderToChannel(channel, guild, await ReminderService.getReminders({ guildId: guild.id }));
+                    }
                 }
             }
-        }, 3600000); // 1 hour
+        };
+
+        const now = new Date();
+        const nextHour = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours() + 1, 0, 0, 0);
+        const timeUntilNextHour = nextHour.getTime() - now.getTime();
+
+        console.log(`Next reminder scheduled at: ${nextHour.toLocaleTimeString()}`);
+
+        const sendReminders = async () => {
+            // Iterate over the guildChannelsMap to send reminders
+            for (const [guildId, channels] of guildChannelsMap.entries()) {
+                console.log(`Sending reminders to channels in guild: ${guildId} with channels: ${channels}`);
+                await Promise.all(channels.map(channel => sendReminderToChannel(channel, guildId)));
+            }
+            const nextReminderTime = new Date();
+            nextReminderTime.setHours(nextReminderTime.getHours() + 1);
+            console.log(`Next reminder scheduled at: ${nextReminderTime.toLocaleTimeString()}`);
+        };
+
+        setTimeout(() => {
+            sendReminders();
+            setInterval(sendReminders, 3600000); // 1 hour
+        }, timeUntilNextHour);
     });
-};//
+};

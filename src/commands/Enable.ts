@@ -1,28 +1,28 @@
 import { CommandInteraction, Client, ApplicationCommandType } from "discord.js";
 import { Command } from "./Command";
-import ReminderService from "../services/ReminderService";
 import { QueryError } from "mysql2";
+import NotificationChannelService from "../services/NotificationChannelService";
 
-export const RemindMe: Command = {
-    name: "remindme",
-    description: "Subscribe to a reminder to drink water",
+export const Enable: Command = {
+    name: "enable",
+    description: "Enable water reminders in this channel.",
     type: ApplicationCommandType.ChatInput,
     run: async (client: Client, interaction: CommandInteraction) => {
-        const userId = interaction.user.id;
         const guildId = interaction.guildId;
+        const channelId = interaction.channelId;
 
-        if (!userId || !guildId) {
-            console.error("User ID or Guild ID is undefined");
+        if (!channelId || !guildId) {
+            console.error("Channel ID or Guild ID is undefined");
             return;
         }
 
         try {
-            await ReminderService.addReminder({ userId, guildId });
+            await NotificationChannelService.addNotificationChannel({ guildId, channelId });
 
-            await interaction.followUp({ content: "You are now subscribed to water reminders! 💧", ephemeral: true });
+            await interaction.followUp({ content: "This channel will now receive water reminders! 💧", ephemeral: true });
         } catch (error) {
             const duplicateError = isQueryError(error) && error.code === 'ER_DUP_ENTRY';
-            const errorMessage = duplicateError ? "You are already subscribed to water reminders." : "There was an error subscribing you to water reminders. Please try again later.";
+            const errorMessage = duplicateError ? "This channel is already subscribed to water reminders." : "There was an error subscribing this channel to water reminders. Please try again later.";
             if (interaction.deferred || interaction.replied) {
                 await interaction.followUp({ content: errorMessage, ephemeral: true });
             } else {

@@ -1,6 +1,7 @@
 import { Command } from "./Command";
-import { Hello } from "./Hello";
+import { Enable } from "./Enable";
 import { Remind } from "./Remind";
 import { RemindMe } from "./RemindMe";
+import { Unsubscribe } from "./Unsubscribe";
 
-export const Commands: Command[] = [Hello, Remind, RemindMe];
+export const Commands: Command[] = [Remind, RemindMe, Unsubscribe, Enable];

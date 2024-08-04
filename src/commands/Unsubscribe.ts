@@ -1,11 +1,10 @@
 import { CommandInteraction, Client, ApplicationCommandType } from "discord.js";
 import { Command } from "./Command";
 import ReminderService from "../services/ReminderService";
-import { QueryError } from "mysql2";
 
-export const RemindMe: Command = {
-    name: "remindme",
-    description: "Subscribe to a reminder to drink water",
+export const Unsubscribe: Command = {
+    name: "unsubscribe",
+    description: "Unsubscribe from all reminders.",
     type: ApplicationCommandType.ChatInput,
     run: async (client: Client, interaction: CommandInteraction) => {
         const userId = interaction.user.id;
@@ -17,12 +16,18 @@ export const RemindMe: Command = {
         }
 
         try {
-            await ReminderService.addReminder({ userId, guildId });
+            const reminders = await ReminderService.getReminders({ userId, guildId });
+            if (reminders.length === 0) {
+                await interaction.followUp({ content: "You are not subscribed to any reminders.", ephemeral: true });
+                return;
+            }
 
-            await interaction.followUp({ content: "You are now subscribed to water reminders! 💧", ephemeral: true });
+            await ReminderService.deleteReminder({ userId, guildId });
+
+            await interaction.followUp({ content: "You have been removed from the reminder list.", ephemeral: true });
         } catch (error) {
-            const duplicateError = isQueryError(error) && error.code === 'ER_DUP_ENTRY';
-            const errorMessage = duplicateError ? "You are already subscribed to water reminders." : "There was an error subscribing you to water reminders. Please try again later.";
+            // const duplicateError = isQueryError(error) && error.code === 'ER_DUP_ENTRY';
+            const errorMessage = "There was an error removing you from water reminders. Please try again later.";
             if (interaction.deferred || interaction.replied) {
                 await interaction.followUp({ content: errorMessage, ephemeral: true });
             } else {
@@ -31,7 +36,3 @@ export const RemindMe: Command = {
         }
     }
 };
-
-function isQueryError(error: any): error is QueryError {
-    return error && error.code && typeof error.code === 'string';
-}
