@@ -1,7 +1,7 @@
-import { Command } from "./Command";
-import { Enable } from "./Enable";
-import { Remind } from "./Remind";
-import { RemindMe } from "./RemindMe";
-import { Unsubscribe } from "./Unsubscribe";
+import { Command } from './Command';
+import { Enable } from './Enable';
+import { Remind } from './Remind';
+import { Subscribe } from './Subscribe';
+import { Unsubscribe } from './Unsubscribe';
 
-export const Commands: Command[] = [Remind, RemindMe, Unsubscribe, Enable];
+export const Commands: Command[] = [Remind, Subscribe, Unsubscribe, Enable];
