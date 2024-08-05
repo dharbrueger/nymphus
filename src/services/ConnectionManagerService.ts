@@ -1,11 +1,10 @@
 import mysql from 'mysql2';
-import { environmentService } from './EnvironmentService';
 
 const connection = mysql.createConnection({
-  host: environmentService.DB_HOST,
-  user: environmentService.DB_USERNAME,
-  password: environmentService.DB_PASSWORD,
-  database: environmentService.DB_NAME,
+  host: process.env.DB_HOST,
+  user: process.env.DB_USERNAME,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
 });
 
 connection.connect((error) => {
